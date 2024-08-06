@@ -14,10 +14,9 @@ type CardProps = {
   isSelected: boolean
 }
 
-export default function Card({ item, handleSelectedCard, isSelected, isMatched, player }: CardProps) {
+export default function Card({ item, handleSelectedCard, isSelected, isMatched }: CardProps) {
   const [isRevealed, setIsRevealed] = React.useState(false)
-  const currentColor = `hover:border-${player.color}-500`
-  console.log(currentColor)
+
   React.useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
@@ -47,8 +46,8 @@ export default function Card({ item, handleSelectedCard, isSelected, isMatched, 
   return (
     <div
       onClick={handleClick}
-      className={cn("border rounded-md h-[12rem] w-full  grid place-content-center",
-        currentColor
+      className={cn("border rounded-md h-[12rem] w-full cursor-pointer grid place-content-center hover:border-green-200",
+
       )}
     >
       {
