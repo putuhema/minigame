@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Cpu, User } from "lucide-react";
 import type { DifficultyLevel, Player } from "../page";
+import Image from "next/image";
 
 
 type PlayerProps = {
@@ -12,11 +13,11 @@ export default function Player({ player, picPosition = "left", difficulty }: Pla
 
   return (
     <div className={`relative flex gap-2 items-start p-2 rounded-lg border ${player.isMyTurn ? ' border-green-500' : ''}`}>
-      <div className={cn("h-10 order-1 w-10 rounded-full border grid place-content-center",
+      <div className={cn(" order-1  grid place-content-center",
         picPosition === "left" && "order-1",
         picPosition === "right" && "order-2",
       )}>
-        {player.name === "AI" ? <Cpu /> : <User />}
+        {player.name === "AI" ? <Image src={`/char/player-${player.guess === "correct" ? "happy" : player.guess === "incorrect" ? "mad" : "idle"}.png`} alt="player avatar" width={200} height={200} /> : <User />}
       </div>
       <div className={cn("flex flex-col justify-end",
         picPosition === "left" && "order-2",

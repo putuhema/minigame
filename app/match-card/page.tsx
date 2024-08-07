@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import AIPointer from "./_components/ai-pointer";
 
 
 
@@ -32,14 +33,16 @@ const DemoPlayers = {
     isMyTurn: true,
     points: 0,
     gold: 20,
-    color: 'blue'
+    color: 'blue',
+    guess: null,
   },
   player2: {
     name: 'AI',
     isMyTurn: false,
     points: 0,
     gold: 100,
-    color: 'red'
+    color: 'red',
+    guess: null,
   }
 }
 
@@ -50,7 +53,7 @@ export interface Item {
 
 export interface MemoryItem extends Item {
   lastSeen: number;
-
+  seenCount: number;
 }
 
 export interface Player {
@@ -59,6 +62,7 @@ export interface Player {
   points: number;
   gold: number;
   color: string;
+  guess: "correct" | "incorrect" | null;
 }
 
 export type DifficultyLevel = "easy" | "medium" | "hard";
@@ -90,12 +94,19 @@ export default function Page() {
   const aiMemoryRef = useRef<MemoryItem[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const turnCounterRef = useRef<number>(0);
+  const [aiPointerVisible, setAiPointerVisible] = useState(false);
+  const [aiPointerPosition, setAiPointerPosition] = useState({ x: 0, y: 0 });
+  const [selectedCard, setSelectedCard] = useState<Item | null>(null)
 
 
   // Initialize game
   useEffect(() => {
     const shuffledItems = shuffleArray([...items, ...items].map(item => ({ id: Math.random(), name: item })));
     setGameState(prev => ({ ...prev, randomItems: shuffledItems }));
+    setAiPointerPosition({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2
+    })
   }, []);
 
   // End Game
@@ -136,6 +147,8 @@ export default function Page() {
     if (gameState.isGameOver) return
 
     turnCounterRef.current += 1;
+    setSelectedCard(item)
+
 
     setGameState(prev => {
       if (prev.selectedCards.length >= 2 || prev.selectedCards.some(card => card.id === item.id)) {
@@ -149,8 +162,9 @@ export default function Page() {
         const existingMemoryItem = aiMemoryRef.current.find(i => item.id === i.id)
         if (existingMemoryItem) {
           existingMemoryItem.lastSeen = turnCounterRef.current
+          existingMemoryItem.seenCount = (existingMemoryItem.seenCount || 0) + 1
         } else {
-          aiMemoryRef.current.push({ ...item, lastSeen: turnCounterRef.current })
+          aiMemoryRef.current.push({ ...item, lastSeen: turnCounterRef.current, seenCount: 1 })
         }
       }
 
@@ -169,7 +183,8 @@ export default function Page() {
         [currentPlayer]: {
           ...prev.players[currentPlayer],
           points: isMatch ? prev.players[currentPlayer].points + 10 : prev.players[currentPlayer].points,
-          isMyTurn: !prev.players[currentPlayer].isMyTurn
+          isMyTurn: !prev.players[currentPlayer].isMyTurn,
+          guess: isMatch ? "correct" : "incorrect"
         },
         [otherPlayer]: {
           ...prev.players[otherPlayer],
@@ -183,7 +198,18 @@ export default function Page() {
 
 
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => updateGameState({ selectedCards: [] }), 1000);
+      timerRef.current = setTimeout(() => {
+        updateGameState({
+          selectedCards: [],
+          players: {
+            ...newPlayers, [currentPlayer]: {
+              ...newPlayers[currentPlayer],
+              guess: null
+            }
+          }
+        })
+      }
+        , 1000);
 
       return {
         ...prev,
@@ -194,6 +220,33 @@ export default function Page() {
     });
 
   }, [updateGameState, gameState.difficulty]);
+
+
+  useEffect(() => {
+    if (selectedCard) {
+      const cardElement = document.getElementById(`card-${selectedCard.id}`);
+      let timeoutIdx: NodeJS.Timeout;
+      if (cardElement) {
+        const rect = cardElement.getBoundingClientRect()
+        setAiPointerPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        })
+        setAiPointerVisible(true)
+      }
+
+      const idx = setTimeout(() => {
+        setAiPointerVisible(false)
+      }, 1000)
+
+      return () => {
+        clearTimeout(idx)
+        clearTimeout(timeoutIdx)
+      }
+    }
+
+
+  }, [selectedCard])
 
   const aiMove = useAIMove(gameState, aiMemoryRef, turnCounterRef, handleSelectCard)
 
@@ -211,8 +264,8 @@ export default function Page() {
     const shuffledItems = shuffleArray([...items, ...items].map(item => ({ id: Math.random(), name: item })));
     updateGameState({
       players: {
-        player1: { ...gameState.players.player1, points: 0 },
-        player2: { ...gameState.players.player2, points: 0 },
+        player1: { ...gameState.players.player1, isMyTurn: true, points: 0 },
+        player2: { ...gameState.players.player2, isMyTurn: false, points: 0 },
       },
       selectedCards: [],
       matchedPairs: new Set(),
@@ -225,12 +278,13 @@ export default function Page() {
 
 
   return (
-    <div className="w-full">
+    <div className="w-full relative">
+      <AIPointer isVisible={aiPointerVisible} position={aiPointerPosition} />
       <Dialog open={isDialogOpen}>
-        <DialogTrigger>Open</DialogTrigger>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Matching Card Games</DialogTitle>
+            <DialogDescription>matching 2 cards with the same picture</DialogDescription>
             <div>
               <p>Choose Difficulty Level : </p>
               <Select defaultValue={gameState.difficulty} onValueChange={diff => updateGameState({ difficulty: (diff as DifficultyLevel) })}>
@@ -269,15 +323,16 @@ export default function Page() {
         gameState.isGameOver &&
         <button className="border block mx-auto rounded-md p-2" onClick={handleResetGame}>Play Again</button>
       }
-      <div className="grid grid-cols-5 gap-2 max-w-2xl mx-auto mt-10">
+      <div className="grid grid-cols-5 gap-2 max-w-2xl mx-auto mt-10 ">
         {gameState.randomItems.map((item) => (
           <Card
             player={gameState.players.player1.isMyTurn ? gameState.players.player1 : gameState.players.player2}
-            key={item.id}
+            key={`card-${item.id}`}
             item={item}
             handleSelectedCard={handleSelectCard}
             isMatched={gameState.matchedPairs.has(item.id)}
             isSelected={gameState.selectedCards.some(card => card.id === item.id)}
+            selectedCardCounts={gameState.selectedCards.length}
           />
         ))}
       </div>

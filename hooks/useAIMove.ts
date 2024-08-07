@@ -26,15 +26,19 @@ export const useAIMove = (
 
     const calculateWeight = (item: MemoryItem): number => {
       const turnsAgo = turnCounterRef.current - item.lastSeen;
+      const baseWeight = Math.max(1, 15 - Math.sqrt(turnsAgo));
+
+      const multipleSeenBonus = Math.min(item.seenCount || 0, 5);
+
       switch (gameState.difficulty) {
         case "easy":
-          return Math.max(1, 5 - turnsAgo);
+          return baseWeight * 0.5 + multipleSeenBonus;
         case "medium":
-          return Math.max(1, 10 - turnsAgo);
+          return baseWeight + multipleSeenBonus;
         case "hard":
-          return Math.max(1, 15 - Math.sqrt(turnsAgo));
+          return baseWeight * 1.5 + multipleSeenBonus * 2;
         default:
-          return 1;
+          return baseWeight;
       }
     };
 
@@ -63,10 +67,12 @@ export const useAIMove = (
       const existingCard = aiMemory.current.find((item) => item.id === card.id);
       if (existingCard) {
         existingCard.lastSeen = turnCounterRef.current;
+        existingCard.seenCount = (existingCard.seenCount || 0) + 1;
       } else {
         aiMemory.current.push({
           ...card,
           lastSeen: turnCounterRef.current,
+          seenCount: 1,
         });
       }
     };
@@ -90,16 +96,33 @@ export const useAIMove = (
       handleSelectCard(card);
     };
 
-    // introduces randomness for easier difficulties
-    if (gameState.difficulty === "easy" && Math.random() < 0.3) {
-      [firstPick, secondPick] = selectWeightCards(unmathedGlobal, 2);
-    } else if (gameState.difficulty === "medium" && Math.random() < 0.15) {
+    // Introduce adaptive difficulty
+    const matchRate =
+      gameState.matchedPairs.size / (gameState.randomItems.length / 2);
+    let mistakeProbability;
+
+    switch (gameState.difficulty) {
+      case "easy":
+        mistakeProbability = 0.3 - matchRate * 0.1;
+        break;
+      case "medium":
+        mistakeProbability = 0.15 - matchRate * 0.05;
+        break;
+      case "hard":
+        mistakeProbability = 0.05 - matchRate * 0.02;
+        break;
+      default:
+        mistakeProbability = 0;
+    }
+
+    if (Math.random() < mistakeProbability) {
       [firstPick, secondPick] = selectWeightCards(unmathedGlobal, 2);
     }
 
     makeMove(firstPick);
 
-    setTimeout(() => makeMove(secondPick), 1000);
+    const delayTime = Math.random() * 1000 + 1500; // Random delay between 1.5 and 2.5 seconds
+    setTimeout(() => makeMove(secondPick), delayTime);
   }, [gameState.randomItems, gameState.matchedPairs, handleSelectCard]);
   return aiMove;
 };
