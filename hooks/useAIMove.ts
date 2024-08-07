@@ -1,13 +1,16 @@
-import { GameState, Item } from "@/app/match-card/page";
+import { GameState, Item, MemoryItem } from "@/app/match-card/page";
 import { shuffleArray } from "@/lib/utils";
-import { MutableRefObject, useCallback } from "react";
+import { MutableRefObject, useCallback, useRef } from "react";
 
 export const useAIMove = (
   gameState: GameState,
-  aiMemory: MutableRefObject<Item[]>,
+  aiMemory: MutableRefObject<MemoryItem[]>,
+  turnCounterRef: MutableRefObject<number>,
   handleSelectCard: (card: Item) => void
 ) => {
   const aiMove = useCallback(() => {
+    turnCounterRef.current += 1;
+
     const getUnmatchedCards = (cards: Item[]): Item[] =>
       cards.filter((card) => !gameState.matchedPairs.has(card.id));
 
@@ -21,7 +24,12 @@ export const useAIMove = (
       return null;
     };
 
-    const selectPreferedCards = (cards: Item[], count: number): Item[] => {
+    const calculateWeight = (item: MemoryItem): number => {
+      const turnsAgo = turnCounterRef.current - item.lastSeen;
+      return Math.max(1, 10 - turnsAgo); // Weight decreases linearly, minimum weight is 1
+    };
+
+    const selectWeightCards = (cards: Item[], count: number): Item[] => {
       const unseenCards = cards.filter(
         (card) => !aiMemory.current.some((memCard) => memCard.id === card.id)
       );
@@ -29,8 +37,14 @@ export const useAIMove = (
       if (unseenCards.length >= count) {
         return shuffleArray(unseenCards).slice(0, count);
       } else {
-        const seenCards = cards.filter((card) =>
-          aiMemory.current.some((memCard) => memCard.id === card.id)
+        const seenCards = aiMemory.current.filter(
+          (card) => !gameState.matchedPairs.has(card.id)
+        );
+
+        const weightSelection = weightRandomSelection(
+          seenCards,
+          calculateWeight,
+          count - unseenCards.length
         );
         return [
           ...shuffleArray(unseenCards),
@@ -40,8 +54,14 @@ export const useAIMove = (
     };
 
     const updateAIMemory = (card: Item) => {
-      if (!aiMemory.current.some((memCard) => memCard.id === card.id)) {
-        aiMemory.current.push(card);
+      const existingCard = aiMemory.current.find((item) => item.id === card.id);
+      if (existingCard) {
+        existingCard.lastSeen = turnCounterRef.current;
+      } else {
+        aiMemory.current.push({
+          ...card,
+          lastSeen: turnCounterRef.current,
+        });
       }
     };
 
@@ -50,7 +70,7 @@ export const useAIMove = (
 
     const knownPair = findMatchingPair(unmatchedMemory);
     let [firstPick, secondPick] =
-      knownPair ?? selectPreferedCards(unmathedGlobal, 2);
+      knownPair ?? selectWeightCards(unmathedGlobal, 2);
 
     if (!knownPair) {
       const potentialMatch = unmatchedMemory.find(
@@ -70,3 +90,26 @@ export const useAIMove = (
   }, [gameState.randomItems, gameState.matchedPairs, handleSelectCard]);
   return aiMove;
 };
+
+function weightRandomSelection<T>(
+  items: T[],
+  weightFn: (item: T) => number,
+  count: number
+): T[] {
+  const weights = items.map(weightFn);
+  const totalWeight = weights.reduce((acc, weight) => acc + weight, 0);
+
+  const selected: T[] = [];
+  for (let i = 0; i < count; i++) {
+    let randomWeight = Math.random() * totalWeight;
+    for (let j = 0; j < items.length; j++) {
+      randomWeight -= weights[j];
+      if (randomWeight <= 0) {
+        selected.push(items[j]);
+        break;
+      }
+    }
+  }
+
+  return selected;
+}

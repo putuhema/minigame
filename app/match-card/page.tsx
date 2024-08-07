@@ -23,9 +23,14 @@ const DemoPlayers = {
   }
 }
 
-export type Item = {
-  id: number,
+export interface Item {
+  id: number;
   name: string
+}
+
+export interface MemoryItem extends Item {
+  lastSeen: number;
+
 }
 
 export interface GameState {
@@ -44,8 +49,10 @@ export default function Page() {
     randomItems: [],
     isGameOver: false
   });
-  const aiMemoryRef = useRef<Item[]>([])
+  const aiMemoryRef = useRef<MemoryItem[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const turnCounterRef = useRef<number>(0);
+
 
 
   // Initialize game
@@ -66,6 +73,7 @@ export default function Page() {
   }, [gameState.matchedPairs])
 
   const handleSelectCard = useCallback((item: Item) => {
+    turnCounterRef.current += 1;
     if (!gameState.isGameOver) {
 
       setGameState(prev => {
@@ -74,7 +82,7 @@ export default function Page() {
 
           // Memorize both player and AI previous pick
           if (!aiMemoryRef.current.find(i => i.id === item.id && item.name === i.name)) {
-            aiMemoryRef.current.push(item)
+            aiMemoryRef.current.push({ ...item, lastSeen: turnCounterRef.current })
           }
 
           // Check for match immediately if two cards are selected
@@ -131,7 +139,7 @@ export default function Page() {
     }
   }, [updateGameState]);
 
-  const aiMove = useAIMove(gameState, aiMemoryRef, handleSelectCard)
+  const aiMove = useAIMove(gameState, aiMemoryRef, turnCounterRef, handleSelectCard)
 
   useEffect(() => {
     if (!gameState.isGameOver && gameState.players.player2.isMyTurn && gameState.selectedCards.length === 0) {
