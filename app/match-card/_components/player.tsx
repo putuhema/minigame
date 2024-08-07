@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Cpu, User } from "lucide-react";
 
 
 export interface Player {
@@ -16,10 +16,11 @@ export default function Player({ player, picPosition = "left" }: PlayerProps) {
 
   return (
     <div className={`relative flex gap-2 items-start p-2 rounded-lg border ${player.isMyTurn ? ' border-green-500' : ''}`}>
-      <div className={cn("h-10 order-1 w-10 rounded-full border",
+      <div className={cn("h-10 order-1 w-10 rounded-full border grid place-content-center",
         picPosition === "left" && "order-1",
         picPosition === "right" && "order-2",
       )}>
+        {player.name === "AI" ? <Cpu /> : <User />}
       </div>
       <div className={cn(
         picPosition === "left" && "order-2",

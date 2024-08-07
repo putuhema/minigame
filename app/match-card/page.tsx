@@ -2,9 +2,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Card from "./_components/card";
 import Scoreboard from "./_components/scoreboard";
-import Image from "next/image";
+import { shuffleArray } from "@/lib/utils";
+import { useAIMove } from "@/hooks/useAIMove";
 
-const items = ["cat", "bird", "dog", "hippo", "monkey", "worm", "shark", "jellyfish", "octopus", "catfish"]
+const items = ["cat", "bird", "dog", "hippo", "monkey", "worm", "jellyfish", "shark", "pig", "cow"]
 
 
 const DemoPlayers = {
@@ -27,11 +28,12 @@ export type Item = {
   name: string
 }
 
-interface GameState {
+export interface GameState {
   players: typeof DemoPlayers;
   selectedCards: Item[];
   matchedPairs: Set<number>;
   randomItems: Item[];
+  isGameOver: boolean;
 }
 
 export default function Page() {
@@ -39,11 +41,12 @@ export default function Page() {
     players: DemoPlayers,
     selectedCards: [],
     matchedPairs: new Set(),
-    randomItems: []
+    randomItems: [],
+    isGameOver: false
   });
-  // const aiMemoryRef = useRef<Map<string, number>>(new Map());
   const aiMemoryRef = useRef<Item[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   // Initialize game
   useEffect(() => {
@@ -55,111 +58,113 @@ export default function Page() {
     setGameState(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const handleSelectCard = useCallback((item: Item) => {
-    setGameState(prev => {
-      if (prev.selectedCards.length < 2 && !prev.selectedCards.some(card => card.id === item.id)) {
-        const newSelectedCards = [...prev.selectedCards, item];
-
-        // Memorize both player and AI previous pick
-        if (!aiMemoryRef.current.find(i => i.id === item.id && item.name === i.name)) {
-          aiMemoryRef.current.push(item)
-        }
-
-        // Check for match immediately if two cards are selected
-        if (newSelectedCards.length === 2) {
-          const [first, second] = newSelectedCards;
-          const currentPlayer = prev.players.player1.isMyTurn ? 'player1' : 'player2';
-          const otherPlayer = currentPlayer === 'player1' ? 'player2' : 'player1';
-
-
-          if (first.name === second.name) {
-            const newMatchedPairs = new Set(prev.matchedPairs).add(first.id).add(second.id);
-            const newPlayers = {
-              ...prev.players,
-              [currentPlayer]: {
-                ...prev.players[currentPlayer],
-                points: prev.players[currentPlayer].points + 10,
-                isMyTurn: !prev.players[currentPlayer].isMyTurn
-              },
-              [otherPlayer]: {
-                ...prev.players[otherPlayer],
-                isMyTurn: !prev.players[otherPlayer].isMyTurn
-              }
-            };
-
-            // Schedule clearing of selected cards
-            if (timerRef.current) clearTimeout(timerRef.current);
-            timerRef.current = setTimeout(() => updateGameState({ selectedCards: [] }), 1000);
-
-            return {
-              ...prev,
-              selectedCards: newSelectedCards,
-              matchedPairs: newMatchedPairs,
-              players: newPlayers
-            };
-          } else {
-            // No match, switch turns
-            const newPlayers = {
-              player1: { ...prev.players.player1, isMyTurn: !prev.players.player1.isMyTurn },
-              player2: { ...prev.players.player2, isMyTurn: !prev.players.player2.isMyTurn }
-            };
-
-            // Schedule clearing of selected cards
-            if (timerRef.current) clearTimeout(timerRef.current);
-            timerRef.current = setTimeout(() => updateGameState({ selectedCards: [] }), 1000);
-
-            return { ...prev, selectedCards: newSelectedCards, players: newPlayers };
-          }
-        }
-
-        return { ...prev, selectedCards: newSelectedCards };
-      }
-      return prev;
-    });
-  }, [updateGameState]);
-
-  console.log({ memory: aiMemoryRef.current })
-  const aiMove = useCallback(() => {
-    const unmatched = aiMemoryRef.current.filter(item => !gameState.matchedPairs.has(item.id));
-    const globalUnmatched = gameState.randomItems.filter(item => !gameState.matchedPairs.has(item.id));
-
-
-
-    let firstPick: Item | null = null;
-    let secondPick: Item | null = null;
-
-    for (const item of aiMemoryRef.current) {
-      const matchingCard = unmatched.find(i => item.name === i.name && item.id !== i.id);
-      if (matchingCard) {
-        firstPick = unmatched.find(i => item.id === i.id) || null;
-        secondPick = matchingCard;
-        break;
-      }
-    }
-
-    if (!firstPick) {
-      [firstPick, secondPick] = shuffleArray(globalUnmatched).slice(0, 2);
-    }
-
-    if (firstPick) handleSelectCard(firstPick);
-    if (secondPick) setTimeout(() => handleSelectCard(secondPick), 1000);
-  }, [gameState.randomItems, gameState.matchedPairs, handleSelectCard]);
 
   useEffect(() => {
-    if (gameState.players.player2.isMyTurn && gameState.selectedCards.length === 0) {
+    if (gameState.matchedPairs.size === gameState.randomItems.length - 2) {
+      updateGameState({ isGameOver: true })
+    }
+  }, [gameState.matchedPairs])
+
+  const handleSelectCard = useCallback((item: Item) => {
+    if (!gameState.isGameOver) {
+
+      setGameState(prev => {
+        if (prev.selectedCards.length < 2 && !prev.selectedCards.some(card => card.id === item.id)) {
+          const newSelectedCards = [...prev.selectedCards, item];
+
+          // Memorize both player and AI previous pick
+          if (!aiMemoryRef.current.find(i => i.id === item.id && item.name === i.name)) {
+            aiMemoryRef.current.push(item)
+          }
+
+          // Check for match immediately if two cards are selected
+          if (newSelectedCards.length === 2) {
+            const [first, second] = newSelectedCards;
+            const currentPlayer = prev.players.player1.isMyTurn ? 'player1' : 'player2';
+            const otherPlayer = currentPlayer === 'player1' ? 'player2' : 'player1';
+
+
+            if (first.name === second.name) {
+              const newMatchedPairs = new Set(prev.matchedPairs).add(first.id).add(second.id);
+              const newPlayers = {
+                ...prev.players,
+                [currentPlayer]: {
+                  ...prev.players[currentPlayer],
+                  points: prev.players[currentPlayer].points + 10,
+                  isMyTurn: !prev.players[currentPlayer].isMyTurn
+                },
+                [otherPlayer]: {
+                  ...prev.players[otherPlayer],
+                  isMyTurn: !prev.players[otherPlayer].isMyTurn
+                }
+              };
+
+              // Schedule clearing of selected cards
+              if (timerRef.current) clearTimeout(timerRef.current);
+              timerRef.current = setTimeout(() => updateGameState({ selectedCards: [] }), 1000);
+
+              return {
+                ...prev,
+                selectedCards: newSelectedCards,
+                matchedPairs: newMatchedPairs,
+                players: newPlayers
+              };
+            } else {
+              // No match, switch turns
+              const newPlayers = {
+                player1: { ...prev.players.player1, isMyTurn: !prev.players.player1.isMyTurn },
+                player2: { ...prev.players.player2, isMyTurn: !prev.players.player2.isMyTurn }
+              };
+
+              // Schedule clearing of selected cards
+              if (timerRef.current) clearTimeout(timerRef.current);
+              timerRef.current = setTimeout(() => updateGameState({ selectedCards: [] }), 1000);
+
+              return { ...prev, selectedCards: newSelectedCards, players: newPlayers };
+            }
+          }
+
+          return { ...prev, selectedCards: newSelectedCards };
+        }
+        return prev;
+      });
+    }
+  }, [updateGameState]);
+
+  const aiMove = useAIMove(gameState, aiMemoryRef, handleSelectCard)
+
+  useEffect(() => {
+    if (!gameState.isGameOver && gameState.players.player2.isMyTurn && gameState.selectedCards.length === 0) {
       const timeoutId = setTimeout(aiMove, 1000);
       return () => clearTimeout(timeoutId);
     }
   }, [gameState.players.player2.isMyTurn, gameState.selectedCards.length, aiMove]);
 
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    return [...array].sort(() => Math.random() - 0.5);
-  };
+
+
+  const handleResetGame = () => {
+    const shuffledItems = shuffleArray([...items, ...items].map(item => ({ id: Math.random(), name: item })));
+    updateGameState({
+      players: {
+        player1: { ...gameState.players.player1, points: 0 },
+        player2: { ...gameState.players.player2, points: 0 },
+      },
+      selectedCards: [],
+      matchedPairs: new Set(),
+      randomItems: shuffledItems,
+      isGameOver: false
+    })
+  }
+
 
   return (
     <div className="w-full">
       <Scoreboard players={gameState.players} />
-      <div className="grid grid-cols-5 gap-4 w-full">
+      {
+        gameState.isGameOver &&
+        <button className="border block mx-auto rounded-md p-2" onClick={handleResetGame}>Play Again</button>
+      }
+      <div className="grid grid-cols-5 gap-2 max-w-2xl mx-auto mt-10">
         {gameState.randomItems.map((item) => (
           <Card
             player={gameState.players.player1.isMyTurn ? gameState.players.player1 : gameState.players.player2}
@@ -170,12 +175,6 @@ export default function Page() {
             isSelected={gameState.selectedCards.some(card => card.id === item.id)}
           />
         ))}
-      </div>
-      <div className="h-[12rem] overflow-auto w-max border">
-        <div className="flex flex-col gap-2 items-center">
-          {
-            aiMemoryRef.current.map(({ name, id }) => <div key={id}>{name} ({id})</div>)
-          }</div>
       </div>
     </div>
   );
