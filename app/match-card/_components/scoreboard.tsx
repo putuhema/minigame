@@ -1,15 +1,17 @@
 import React from 'react'
-import type { Player as PlayerType } from './player'
+import type { Player as PlayerType } from "../page"
 import Player from './player'
+import type { DifficultyLevel } from '../page'
 
 type ScoreboardProps = {
+  difficulty: DifficultyLevel
   players: {
     player1: PlayerType,
     player2: PlayerType,
   }
 }
 
-export default function Scoreboard({ players }: ScoreboardProps) {
+export default function Scoreboard({ players, difficulty }: ScoreboardProps) {
   return (
     <div className="flex items-center justify-between p-2">
       <Player player={players.player1} />
@@ -22,7 +24,7 @@ export default function Scoreboard({ players }: ScoreboardProps) {
           <p>{players.player2.points}<i className='text-sm'>pts</i></p>
         </div>
       </div>
-      <Player player={players.player2} picPosition="right" />
+      <Player player={players.player2} picPosition="right" difficulty={difficulty} />
     </div>
   )
 }

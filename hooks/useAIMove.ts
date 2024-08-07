@@ -26,7 +26,16 @@ export const useAIMove = (
 
     const calculateWeight = (item: MemoryItem): number => {
       const turnsAgo = turnCounterRef.current - item.lastSeen;
-      return Math.max(1, 10 - turnsAgo); // Weight decreases linearly, minimum weight is 1
+      switch (gameState.difficulty) {
+        case "easy":
+          return Math.max(1, 5 - turnsAgo);
+        case "medium":
+          return Math.max(1, 10 - turnsAgo);
+        case "hard":
+          return Math.max(1, 15 - Math.sqrt(turnsAgo));
+        default:
+          return 1;
+      }
     };
 
     const selectWeightCards = (cards: Item[], count: number): Item[] => {
@@ -46,10 +55,7 @@ export const useAIMove = (
           calculateWeight,
           count - unseenCards.length
         );
-        return [
-          ...shuffleArray(unseenCards),
-          ...shuffleArray(seenCards).slice(0, count - unseenCards.length),
-        ];
+        return [...shuffleArray(unseenCards), ...weightSelection];
       }
     };
 
@@ -72,7 +78,7 @@ export const useAIMove = (
     let [firstPick, secondPick] =
       knownPair ?? selectWeightCards(unmathedGlobal, 2);
 
-    if (!knownPair) {
+    if (!knownPair && gameState.difficulty !== "easy") {
       const potentialMatch = unmatchedMemory.find(
         (i) => i.name == firstPick.name && i.id !== firstPick.id
       );
@@ -83,6 +89,13 @@ export const useAIMove = (
       updateAIMemory(card);
       handleSelectCard(card);
     };
+
+    // introduces randomness for easier difficulties
+    if (gameState.difficulty === "easy" && Math.random() < 0.3) {
+      [firstPick, secondPick] = selectWeightCards(unmathedGlobal, 2);
+    } else if (gameState.difficulty === "medium" && Math.random() < 0.15) {
+      [firstPick, secondPick] = selectWeightCards(unmathedGlobal, 2);
+    }
 
     makeMove(firstPick);
 

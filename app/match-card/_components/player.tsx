@@ -1,18 +1,14 @@
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Cpu, User } from "lucide-react";
+import type { DifficultyLevel, Player } from "../page";
 
 
-export interface Player {
-  name: string;
-  isMyTurn: boolean;
-  points: number
-  color: string;
-}
 type PlayerProps = {
   player: Player
   picPosition?: "left" | "right"
+  difficulty?: DifficultyLevel
 }
-export default function Player({ player, picPosition = "left" }: PlayerProps) {
+export default function Player({ player, picPosition = "left", difficulty }: PlayerProps) {
 
   return (
     <div className={`relative flex gap-2 items-start p-2 rounded-lg border ${player.isMyTurn ? ' border-green-500' : ''}`}>
@@ -22,11 +18,15 @@ export default function Player({ player, picPosition = "left" }: PlayerProps) {
       )}>
         {player.name === "AI" ? <Cpu /> : <User />}
       </div>
-      <div className={cn(
+      <div className={cn("flex flex-col justify-end",
         picPosition === "left" && "order-2",
         picPosition === "right" && "order-1",
       )}>
-        <p className={cn("font-bold order-1")}>{player.name}</p>
+        <p className={cn("font-bold")}>{player.name} </p>
+        <p className="text-sm">{difficulty}</p>
+        <p>
+          {player.gold}<i className="text-xs">g</i>
+        </p>
       </div>
       {
         player.isMyTurn && picPosition === "left" && (
