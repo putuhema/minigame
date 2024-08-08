@@ -13,18 +13,16 @@ type ScoreboardProps = {
 
 export default function Scoreboard({ players, difficulty }: ScoreboardProps) {
   return (
-    <div className="flex items-center justify-between p-2">
-      <Player player={players.player1} />
-      <div className="flex gap-2 justify-center items-start text-3xl font-bold">
-        <div className="border p-2 rounded-md">
-          <p>{players.player1.points}<i className='text-sm'>pts</i></p>
+    <div className=' mx-auto max-w-md border rounded-full border-green-600 bg-green-100'>
+      <div className="flex items-center justify-between p-1">
+        <Player player={players.player1} />
+        <div className="flex gap-2 justify-center items-start text-4xl font-bold">
+          <p>{players.player1.points}</p>
+          <p>:</p>
+          <p>{players.player2.points}</p>
         </div>
-        <p>-</p>
-        <div className="border p-2 rounded-md">
-          <p>{players.player2.points}<i className='text-sm'>pts</i></p>
-        </div>
+        <Player player={players.player2} picPosition="right" difficulty={difficulty} />
       </div>
-      <Player player={players.player2} picPosition="right" difficulty={difficulty} />
     </div>
   )
 }

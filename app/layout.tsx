@@ -18,12 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="flex gap-4">
-          <Sidebar />
-          <div className="p-4 w-full">
-            {children}
-          </div>
-        </div>
+        {children}
       </body>
     </html>
   );

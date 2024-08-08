@@ -4,30 +4,16 @@ import Card from "./_components/card";
 import Scoreboard from "./_components/scoreboard";
 import { shuffleArray } from "@/lib/utils";
 import { useAIMove } from "@/hooks/useAIMove";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+
 import AIPointer from "./_components/ai-pointer";
+import DialogStart from "./_components/dialog-start";
 
 
 
-const items = ["cat", "bird", "dog", "hippo", "monkey", "worm", "jellyfish", "shark", "pig", "cow"]
+const items = ["ant", "ball", "boar", "frog", "lizard", "mimic", "red-ant", "rhino", "skull-gator", "snake"]
 
 
-const DemoPlayers = {
+const DemoPlayers: Players = {
   player1: {
     name: 'funnyValentine',
     isMyTurn: true,
@@ -35,6 +21,7 @@ const DemoPlayers = {
     gold: 20,
     color: 'blue',
     guess: null,
+    role: "player"
   },
   player2: {
     name: 'AI',
@@ -43,6 +30,7 @@ const DemoPlayers = {
     gold: 100,
     color: 'red',
     guess: null,
+    role: "ai"
   }
 }
 
@@ -63,6 +51,12 @@ export interface Player {
   gold: number;
   color: string;
   guess: "correct" | "incorrect" | null;
+  role: "player" | "ai"
+}
+
+type Players = {
+  player1: Player;
+  player2: Player;
 }
 
 export type DifficultyLevel = "easy" | "medium" | "hard";
@@ -80,7 +74,6 @@ export interface GameState {
 }
 
 export default function Page() {
-  const [input, setInput] = useState("")
   const [isDialogOpen, setDialogOpen] = useState(true)
   const [gameState, setGameState] = useState<GameState>({
     players: DemoPlayers,
@@ -176,15 +169,16 @@ export default function Page() {
       const [first, second] = newSelectedCards;
       const isMatch = first.name === second.name;
       const currentPlayer = prev.players.player1.isMyTurn ? 'player1' : 'player2';
-      const otherPlayer = currentPlayer === 'player1' ? 'player2' : 'player1';
+      const otherPlayer = currentPlayer === "player1" ? "player2" : "player1";
+
 
       const newPlayers = {
         ...prev.players,
         [currentPlayer]: {
           ...prev.players[currentPlayer],
           points: isMatch ? prev.players[currentPlayer].points + 10 : prev.players[currentPlayer].points,
-          isMyTurn: !prev.players[currentPlayer].isMyTurn,
-          guess: isMatch ? "correct" : "incorrect"
+          guess: isMatch ? "correct" : "incorrect",
+          isMyTurn: !prev.players[currentPlayer].isMyTurn
         },
         [otherPlayer]: {
           ...prev.players[otherPlayer],
@@ -204,8 +198,8 @@ export default function Page() {
           players: {
             ...newPlayers, [currentPlayer]: {
               ...newPlayers[currentPlayer],
-              guess: null
-            }
+              guess: null,
+            },
           }
         })
       }
@@ -220,7 +214,6 @@ export default function Page() {
     });
 
   }, [updateGameState, gameState.difficulty]);
-
 
   useEffect(() => {
     if (selectedCard) {
@@ -274,67 +267,53 @@ export default function Page() {
     })
     aiMemoryRef.current = []
     turnCounterRef.current = 0
+
   }
 
 
+  const handleUpdateDifficultyLevel = (difficulty: string) => {
+    updateGameState({ difficulty: (difficulty as DifficultyLevel) })
+  }
+
+  const handleSetPlayerWager = (wager: number) => {
+    const currentGold = gameState.players.player1.gold - wager
+    updateGameState({ wager: wager, players: { ...gameState.players, player1: { ...gameState.players.player1, gold: currentGold } } })
+  }
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false)
+  }
   return (
     <div className="w-full relative">
       <AIPointer isVisible={aiPointerVisible} position={aiPointerPosition} />
-      <Dialog open={isDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Matching Card Games</DialogTitle>
-            <DialogDescription>matching 2 cards with the same picture</DialogDescription>
-            <div>
-              <p>Choose Difficulty Level : </p>
-              <Select defaultValue={gameState.difficulty} onValueChange={diff => updateGameState({ difficulty: (diff as DifficultyLevel) })}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Difficulty" />
-                </SelectTrigger>
-                <SelectContent >
-                  <SelectItem value="easy">Easy</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-              <p>Wage your Gold: {gameState.players.player1.gold}<i className="text-xs">g</i></p>
-              <input
-                className="border p-2 rounded-md"
-                onChange={e => {
-                  let value = Number(e.target.value)
-                  if (value > gameState.players.player1.gold) {
-                    value = gameState.players.player1.gold
-                  };
-                  setInput(value.toString())
-                }}></input>
-              <button onClick={() => {
-                const currentGold = gameState.players.player1.gold - Number(input)
-                updateGameState({ wager: Number(input), players: { ...gameState.players, player1: { ...gameState.players.player1, gold: currentGold } } })
-
-              }}>Wage</button>
-            </div>
-            <button onClick={() => setDialogOpen(false)} >Play</button>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
-
-      <Scoreboard players={gameState.players} difficulty={gameState.difficulty} />
+      <DialogStart
+        gameState={gameState}
+        handleDifficultyChange={handleUpdateDifficultyLevel}
+        handleSetPlayerWager={handleSetPlayerWager}
+        isDialogOpen={isDialogOpen}
+        handleCloseDialog={handleCloseDialog}
+      />
+      <div className="pt-24">
+        <Scoreboard players={gameState.players} difficulty={gameState.difficulty} />
+      </div>
       {
         gameState.isGameOver &&
         <button className="border block mx-auto rounded-md p-2" onClick={handleResetGame}>Play Again</button>
       }
-      <div className="grid grid-cols-5 gap-2 max-w-2xl mx-auto mt-10 ">
-        {gameState.randomItems.map((item) => (
-          <Card
-            player={gameState.players.player1.isMyTurn ? gameState.players.player1 : gameState.players.player2}
-            key={`card-${item.id}`}
-            item={item}
-            handleSelectedCard={handleSelectCard}
-            isMatched={gameState.matchedPairs.has(item.id)}
-            isSelected={gameState.selectedCards.some(card => card.id === item.id)}
-            selectedCardCounts={gameState.selectedCards.length}
-          />
-        ))}
+      <div className="pt-10">
+        <div className="grid grid-cols-5 gap-2 max-w-2xl mx-auto ">
+          {gameState.randomItems.map((item) => (
+            <Card
+              player={gameState.players.player1.isMyTurn ? gameState.players.player1 : gameState.players.player2}
+              key={`card-${item.id}`}
+              item={item}
+              handleSelectedCard={handleSelectCard}
+              isMatched={gameState.matchedPairs.has(item.id)}
+              isSelected={gameState.selectedCards.some(card => card.id === item.id)}
+              selectedCardCounts={gameState.selectedCards.length}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
