@@ -3,6 +3,8 @@ import Slider from './slider'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { DifficultyLevel } from './game';
 import { GameState } from '../page';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 type SplashScreenProps = {
   onStart: () => void
@@ -20,8 +22,6 @@ export default function SplashScreen({ onStart, onUpdate }: SplashScreenProps) {
 
     return params.toString()
   }, [searchParams])
-
-
   const handlePushRouter = (items: string) => {
     router.push(pathname + "?" + createQueryString("difficulty", items))
   }
@@ -43,6 +43,7 @@ export default function SplashScreen({ onStart, onUpdate }: SplashScreenProps) {
   return (
     <div className='w-full h-screen bg-white flex justify-center items-center'>
       <div className='w-[30rem] border p-4 flex flex-col items-center gap-4'>
+        <Link href="/" className='self-start'><ArrowLeft /></Link>
         <h1 className='text-3xl text-center font-bold'>Matching Card</h1>
         <div className="grid grid-cols-2 gap-2 w-full">
           <p>Choose Difficulty : </p>

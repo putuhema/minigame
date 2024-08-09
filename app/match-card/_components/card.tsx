@@ -1,7 +1,7 @@
 "use client"
 
 import * as  React from 'react'
-import type { GameState, Item, Player } from './game'
+import type { Item, Player } from './game'
 import { cn } from '@/lib/utils'
 import { motion } from "framer-motion"
 import Image from 'next/image'

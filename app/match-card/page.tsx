@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Game, { DifficultyLevel, Item, Player } from "./_components/game";
 import SplashScreen from "./_components/spash-screen";
 export interface GameState {
@@ -55,14 +55,20 @@ export default function Page() {
     setGameState(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const [showSplashScreen, setShowSplashScreen] = useState(true) // temporary
+  const [showSplashScreen, setShowSplashScreen] = useState(true)
+
+
 
   const handleStartGame = () => {
     setShowSplashScreen(false)
   }
 
   return (
-    showSplashScreen ? <SplashScreen onStart={handleStartGame} onUpdate={updateGameState} /> : <Game gameState={gameState} setGameState={setGameState} />
+    showSplashScreen ? <SplashScreen
+      onStart={handleStartGame}
+      onUpdate={updateGameState} /> :
+      <Game gameState={gameState}
+        setGameState={setGameState} />
   )
 }
 

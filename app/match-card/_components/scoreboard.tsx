@@ -1,7 +1,6 @@
 import React from 'react'
 import type { Player as PlayerType } from "./game"
 import Player from './player'
-import type { DifficultyLevel } from './game'
 
 type ScoreboardProps = {
   players: {

@@ -1,6 +1,6 @@
 "use client"
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import React, { useCallback, useState } from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 
 type SliderProps = {
