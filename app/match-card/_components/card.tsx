@@ -1,11 +1,10 @@
 "use client"
 
 import * as  React from 'react'
-import type { GameState, Item, Player } from '../page'
+import type { GameState, Item, Player } from './game'
 import { cn } from '@/lib/utils'
 import { motion } from "framer-motion"
 import Image from 'next/image'
-import AIPointer from './ai-pointer'
 
 
 type CardProps = {
@@ -62,8 +61,7 @@ export default function Card({ item, handleSelectedCard, isSelected, isMatched, 
         animate={{ rotateY: isRevealed ? 180 : 0 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
         className={cn(
-          "rounded-xl h-full w-[8rem] cursor-pointer grid place-content-center hover:border-green-200 relative transform-style-3d",
-          isSelected && "shadow-glow"
+          "rounded-xl h-full w-[8rem] cursor-pointer grid place-content-center hover:border-green-200 relative transform-style-3d"
         )}
       >
         <div className="absolute inset-0 w-full h-full backface-hidden">
