@@ -38,7 +38,7 @@ export default function Card({ item, handleSelectedCard, isSelected, isMatched, 
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [isSelected, isMatched, player.isMyTurn]);
+  }, [isSelected, isMatched, player.isMyTurn, selectedCardCounts]);
 
   const handleClick = React.useCallback(() => {
     if (!isRevealed && !isMatched) {

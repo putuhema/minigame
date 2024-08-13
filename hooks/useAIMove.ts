@@ -1,4 +1,8 @@
-import { GameState, Item, MemoryItem } from "@/app/match-card/page";
+import type {
+  Item,
+  MemoryItem,
+} from "@/app/minigame/matching-card/_components/game";
+import type { GameState } from "@/app/minigame/matching-card/page";
 import { shuffleArray } from "@/lib/utils";
 import { MutableRefObject, useCallback, useRef } from "react";
 
