@@ -1,12 +1,13 @@
 "use client"
 
 import { format } from "date-fns"
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import toast, { Toaster } from 'react-hot-toast'
-import { motion, useAnimation } from 'framer-motion'
+import { Toaster } from 'react-hot-toast'
+import { motion } from 'framer-motion'
 import { CircleHelp, Settings } from 'lucide-react'
+import useConnectionGame from '@/hooks/useConnectionGame'
 import Card from "./card"
 
 enum Difficulty {
@@ -15,7 +16,7 @@ enum Difficulty {
   Challenging,
   Tricky
 }
-type Group = {
+export type Group = {
   name: string;
   answer: Array<string>
   difficulty: Difficulty;
@@ -62,7 +63,7 @@ const GROUPS: Group[] = [
   }
 ]
 
-type GameState = {
+export type GameState = {
   card: Array<string>;
   currentGuess: Array<string>;
   mistakesRemaining: number;
@@ -73,162 +74,6 @@ type GameState = {
   foundCorrect: boolean;
 }
 
-function useConnectionGame() {
-  const [gameState, setGameState] = useState<GameState>({
-    card: [],
-    currentGuess: [],
-    mistakesRemaining: 4,
-    previousGuess: [],
-    answer: [],
-    disabledSubmit: false,
-    isWrong: false,
-    foundCorrect: false,
-  })
-
-  const shuffleArray = useMemo(() => <T,>(array: T[]): T[] => {
-    return [...array].sort(() => Math.random() - 0.5);
-  }, []);
-
-  useEffect(() => {
-    const newCard = shuffleArray(GROUPS.flatMap(g => g.answer));
-    setGameState(prev => ({ ...prev, card: newCard }));
-  }, [shuffleArray]);
-
-  function handleOnSuffle() {
-    const newCard = shuffleArray(gameState.card)
-    setGameState(prev => ({ ...prev, card: newCard }))
-  }
-
-  function handleOnPick(pickedWord: string) {
-    const { currentGuess, previousGuess, disabledSubmit } = gameState;
-    const isInCurrentGuess = currentGuess.includes(pickedWord)
-    const isInPreviousGuess = previousGuess.flat().includes(pickedWord)
-    setGameState({ ...gameState, isWrong: false, foundCorrect: false })
-    if (disabledSubmit && isInPreviousGuess) {
-      setGameState({ ...gameState, disabledSubmit: false })
-    }
-    if (currentGuess.length < 4 || isInCurrentGuess) {
-      setGameState(prevGameState => ({
-        ...prevGameState,
-        currentGuess: prevGameState.currentGuess.includes(pickedWord) ?
-          prevGameState.currentGuess.filter(card => card != pickedWord) : [...prevGameState.currentGuess, pickedWord]
-      }))
-    }
-  }
-
-  function isElementEqual<T>(array1: T[], array2: T[]): boolean {
-    if (array1.length !== array2.length) {
-      return false
-    }
-    const sortedArray1 = [...array1.sort()]
-    const sortedArray2 = [...array2.sort()]
-
-    for (let i = 0; i < sortedArray1.length; i++) {
-      if (sortedArray1[i] !== sortedArray2[i]) {
-        return false
-      }
-    }
-    return true
-  }
-
-  function checkIfIsInPrevGuess() {
-    for (let i = 0; i < gameState.previousGuess.length; i++) {
-      if (isElementEqual(gameState.previousGuess[i], gameState.currentGuess)) {
-        return false
-      }
-    }
-    return true
-  }
-
-  const controls = useAnimation()
-  function handleSubmit() {
-    if (!checkIfIsInPrevGuess()) {
-      setGameState(prevGameState => ({
-        ...prevGameState,
-        disabledSubmit: true
-      }))
-      toast("Already Guessed.")
-      return
-    }
-
-    let foundCorrectAnswer = false;
-    let newMistakesRemaining = gameState.mistakesRemaining
-    const updatedAnswer = [...gameState.answer]
-
-    for (let i = 0; i < GROUPS.length; i++) {
-      if (isElementEqual(GROUPS[i].answer, gameState.currentGuess)) {
-        updatedAnswer.push(GROUPS[i])
-        foundCorrectAnswer = true;
-        break;
-      }
-    }
-
-    if (foundCorrectAnswer) {
-      const flattenedAnswer = updatedAnswer.map(a => a.answer).flat()
-      const filteredCard = gameState.card.filter(word => !flattenedAnswer.includes(word))
-
-      controls.start("jumpy").then(() => {
-        setGameState(prevGameState => ({
-          ...prevGameState,
-          card: filteredCard,
-          previousGuess: [],
-          currentGuess: [],
-          answer: updatedAnswer,
-          foundCorrect: true,
-        }))
-      })
-
-    } else {
-      let previousGuess: Array<string[]> = []
-      newMistakesRemaining -= 1
-      if (newMistakesRemaining > 0) {
-        previousGuess = [...gameState.previousGuess, gameState.currentGuess]
-      } else {
-        previousGuess = []
-      }
-
-      setGameState(prevGameState => ({
-        ...prevGameState,
-        previousGuess,
-        isWrong: true,
-        disabledSubmit: true,
-        mistakesRemaining: newMistakesRemaining
-      }))
-    }
-
-  }
-
-  function handleDeselectAll() {
-    setGameState(prevGameState => ({
-      ...prevGameState,
-      currentGuess: []
-    }))
-  }
-
-  function handleResetGameState() {
-    const newCard = shuffleArray(GROUPS.flatMap(g => g.answer));
-    setGameState({
-      answer: [],
-      card: newCard,
-      currentGuess: [],
-      disabledSubmit: false,
-      isWrong: false,
-      mistakesRemaining: 4,
-      previousGuess: [],
-      foundCorrect: false
-    })
-  }
-
-  return {
-    controls,
-    gameState,
-    handleOnPick,
-    handleOnSuffle,
-    handleSubmit,
-    handleDeselectAll,
-    handleResetGameState,
-  }
-}
 
 const ANIMATION_CONFIG = {
   DURATION: 0.08,
@@ -273,7 +118,6 @@ const containerVariants = {
   }
 };
 
-
 export default function Connection() {
   const {
     gameState,
@@ -283,7 +127,7 @@ export default function Connection() {
     handleDeselectAll,
     handleResetGameState,
     controls
-  } = useConnectionGame()
+  } = useConnectionGame(GROUPS)
 
   useEffect(() => {
     const animateSequence = async () => {
@@ -300,7 +144,7 @@ export default function Connection() {
 
   return (
     <>
-      <div className='mt-24 p-8'>
+      <div className=' p-8'>
         <h1 className='text-4xl font-bold'>Connections</h1>
         <p>{format(Date(), "PP")}</p>
         <div className='border-y py-2 flex justify-end gap-2 items-center'>

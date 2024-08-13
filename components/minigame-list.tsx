@@ -6,7 +6,10 @@ const navItems = {
   },
   "/minigame/connection": {
     name: "Connection"
-  }
+  },
+  "/minigame/higher-lower": {
+    name: "Higher Lower"
+  },
 }
 
 export default function MiniGameList() {
